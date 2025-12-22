@@ -8,6 +8,8 @@
 .git/
 .gitignore
 .gitmodules
+.chezmoiignore
 
-# Don't copy README
+# Don't copy documentation
 README.md
+SECRETS.md

@@ -11,7 +11,7 @@ My cross-platform dotfile configuration managed by [chezmoi](https://www.chezmoi
 sh -c "$(curl -fsLS get.chezmoi.io)" -- -b ~/.local/bin
 
 # Initialize from this repo
-chezmoi init https://github.com/YOURUSERNAME/dotfiles.git
+chezmoi init https://github.com/m8ryx/dotfiles-chezmoi.git
 
 # Review what will be changed
 chezmoi diff
