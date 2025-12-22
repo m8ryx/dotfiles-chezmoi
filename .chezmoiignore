@@ -13,3 +13,9 @@
 # Don't copy documentation
 README.md
 SECRETS.md
+
+# Don't track backup and disabled files in nvim config
+**/*.bkp
+**/*.old
+**/*.old.lua
+**/*.off
