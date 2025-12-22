@@ -1,0 +1,18 @@
+# Chezmoi gitignore
+
+# Ignore encrypted files if you use age/gpg encryption
+*.age
+*.gpg
+
+# Ignore backup files
+*.bak
+*~
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# IMPORTANT: Never commit secrets files
+# These should be created manually on each machine
+.zshrc.secrets
+secrets.*

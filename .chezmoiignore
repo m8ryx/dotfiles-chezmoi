@@ -1,0 +1,13 @@
+# Files to ignore when applying dotfiles
+# These files won't be copied to your home directory
+
+# Don't copy the secrets file from the repo
+.zshrc.secrets
+
+# Don't copy git files
+.git/
+.gitignore
+.gitmodules
+
+# Don't copy README
+README.md
