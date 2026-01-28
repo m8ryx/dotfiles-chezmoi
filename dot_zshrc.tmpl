@@ -165,7 +165,7 @@ export NVM_DIR="$HOME/.nvm"
 
 if [[ -z "$TMUX" ]]; then
   if command -v tmux &>/dev/null; then
-    tmux attach-session -t main || tmux new-session -s main
+    tmux new-session -t main || tmux new-session -s main
   fi
 fi
 
