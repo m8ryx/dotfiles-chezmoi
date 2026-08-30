@@ -25,8 +25,7 @@ SECRETS.md
 **/.LSOverride
 
 **/Thumbs.db
-**/
-```ehthumbs.db
+**/ehthumbs.db
 
 **/*~
 **/#*#
@@ -49,3 +48,12 @@ SECRETS.md
 **/*.cache
 
 **/.env
+# claude and PAI files to skip
+.claude/skills/PAI/USER/TELOS/Backups
+.claude/Observability/
+.claude/**
+
+# other sensitive files
+.aws/**
+
+.ssh/id_*

@@ -79,3 +79,7 @@ out/
 private/
 secrets/
 credentials/
+
+.claude/**
+.aws/**
+.ssh/id_*
