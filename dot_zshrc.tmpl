@@ -1,8 +1,12 @@
 # If you come from bash you might have to change your $PATH.
 # export PATH=$HOME/bin:/usr/local/bin:$PATH
-export PATH=$PATH:$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.nvm/versions/node/v22.9.0/bin/
+export PATH=$PATH:$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.nvm/versions/node/v22.9.0/bin/:/usr/local/go/bin
 export DISABLE_AUTO_TITLE='true' # for tmuxp
 export EDITOR='nvim'
+export OBSIDIAN_BASE=${HOME}/Obsidian/rick-personal
+export OBSIDIAN_WORK=${HOME}/Obsidian/obsidian
+#export PAI_DIR=${HOME}/.claude
+export CLAUDE_HOME=${HOME}/.claude
 
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
@@ -12,6 +16,16 @@ export ZSH="$HOME/.oh-my-zsh"
 if [ -f ~/.zshrc.secrets ]; then
     source ~/.zshrc.secrets
 fi
+
+# show dotfiles on tab completion
+setopt globdots
+
+# Golang environment variables
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+
+# Update PATH to include GOPATH and GOROOT binaries
+export PATH=$GOPATH/bin:$GOROOT/bin:$HOME/.local/bin:$PATH
 
 # workaroundd to use AMD ROCm v6 with my graphics card per https://docs.ollama.com/gpu#overrides-on-linux
 {{- if eq .chezmoi.os "linux" }}
@@ -41,7 +55,7 @@ echo `ls ${PY_VENV_BASE}`
 # ZSH_THEME_RANDOM_CANDIDATES=( "robbyrussell" "agnoster" )
 
 # Uncomment the following line to use case-sensitive completion.
-# CASE_SENSITIVE="true"
+CASE_SENSITIVE="true"
 
 # Uncomment the following line to use hyphen-insensitive completion.
 # Case-sensitive completion must be off. _ and - will be interchangeable.
@@ -96,6 +110,15 @@ echo `ls ${PY_VENV_BASE}`
 # Add wisely, as too many plugins slow down shell startup.
 plugins=(git kubectl aws virtualenv tmux)
 
+# Stop zsh from immediately completing parent directories
+zstyle ':completion:*' path-completion false
+
+# Optionally, turn on 'accept-exact-dirs' so that if the path you typed
+# exactly matches a directory, Zsh will only complete up to that point
+zstyle ':completion:*' accept-exact-dirs true
+
+
+
 source $ZSH/oh-my-zsh.sh
 
 # User configuration
@@ -128,7 +151,6 @@ source <(jj util completion zsh)
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
-
 {{- if eq .chezmoi.os "linux" }}
 # Linux-specific aliases
 alias pbcopy='xsel --clipboard --input'
@@ -142,6 +164,9 @@ alias nv='flatpak run io.neovim.nvim'
 # Common aliases (all platforms)
 alias sd="cd ~ && cd \"\$(find * -type d | fzf)\""
 alias myip='curl https://checkip.amazonaws.com'
+
+# minikube alias
+alias kubectl="minikube kubectl --"
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
@@ -163,6 +188,10 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
+# One logical tmux session. `new-session -t main` makes a session GROUPED with
+# main: the window list is shared, but each terminal keeps its own current
+# window, so two windows do not yank each other around. Falls through to
+# creating main when it does not exist yet.
 if [[ -z "$TMUX" ]]; then
   if command -v tmux &>/dev/null; then
     tmux new-session -t main || tmux new-session -s main
@@ -207,5 +236,60 @@ yt() {
     fabric -y "$video_link" $transcript_flag
 }
 
+# ? to query duckduckgo inline - idea from Mischa van dem Berg
+?() { w3m "https://duckduckgo.com/?q=$*"; }
+
+# ?? to send to claude inline
+ai() { claude -p  "$*"; }
+
+
+
 # Fortune for new habits
 fortune ~/.config/fortune/habits|boxes -d nuke
+fpath=(~/.zsh/completions $fpath)
+autoload -Uz compinit && compinit
+
+
+# PAI Configuration (added by Kai Bundle installer)
+export DA="Gai"
+export TIME_ZONE="America/Los_Angeles"
+export PAI_SOURCE_APP="$DA"
+
+ source ~/bin/proj/_proj_completion.zsh
+
+    if (( CURRENT == 2 )); then
+      _describe 'command' commands
+    elif (( CURRENT == 3 )); then
+      case "$words[2]" in
+        path|docs|remove|complete|pause|archive|reactivate|set-docs)
+          projects=(${(f)"$(proj list --json 2>/dev/null | jq -r '.projects[].name' 2>/dev/null)"})
+          _describe 'project' projects
+          ;;
+        add|scan)
+          _directories
+          ;;
+      esac
+    fi
+
+  compdef _proj proj
+
+
+# pnpm
+export PNPM_HOME="/home/rrezinas/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+
+# Added by PAI installer — make bun reachable for hook subprocesses
+export PATH="$HOME/.bun/bin:$PATH"
+
+# PAI alias
+alias pai='bun /home/rrezinas/.claude/PAI/Tools/pai.ts'
+
+# LifeOS launch command (constitutional layer — loads LIFEOS_SYSTEM_PROMPT.md)
+alias lifeos='bun ${HOME}/.claude/LIFEOS/TOOLS/lifeos.ts -s ${HOME}/.claude/LIFEOS/LIFEOS_SYSTEM_PROMPT.md'
+
+# LifeOS voice control (voice on|off|status|clear)
+source ~/.claude/LIFEOS/PULSE/state/voice-shell.zsh
