@@ -188,15 +188,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-# One logical tmux session. `new-session -t main` makes a session GROUPED with
-# main: the window list is shared, but each terminal keeps its own current
-# window, so two windows do not yank each other around. Falls through to
-# creating main when it does not exist yet.
-if [[ -z "$TMUX" ]]; then
-  if command -v tmux &>/dev/null; then
-    tmux new-session -t main || tmux new-session -s main
-  fi
-fi
+# tmux is opt-in: run `tmux new -A -s main` (or herdr) when you want it.
 
 # GenAI tools from Daniel Miessler
 # bun - typescript tooling
