@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# pre-commit — block credentials from reaching this PUBLIC repo.
+#
+# github.com/m8ryx/dotfiles-chezmoi is public, and dotfiles are exactly the
+# files people paste keys into. A manual audit is a snapshot; this is continuous.
+#
+# Scans STAGED ADDED LINES only: not the working tree, so an untracked scratch
+# file does not block you, and not deletions, so removing a secret is never
+# blocked.
+#
+# TWO PASSES, on purpose — they fail in opposite directions:
+#
+#   1. A regex net (below). Naive prefix matching, so it fires on ANY
+#      AKIA-shaped or ghp_-shaped string including low-entropy fakes. High
+#      recall on format, and correspondingly prone to false positives — which
+#      is what the allowlist marker exists for.
+#
+#   2. betterleaks, if installed. ~200 maintained rules using keyword context
+#      and entropy, so it catches real-world secret shapes this file never
+#      will, at near-zero false positives. It deliberately does NOT fire on a
+#      bare invented AWS-format key (AKIA plus sixteen arbitrary characters)
+#      because its AWS rule validates more than the prefix. That is correct
+#      behaviour, not a defect — and it is exactly why pass 1 still exists.
+#
+#      Install:  https://github.com/betterleaks/betterleaks  (verify the
+#      release checksum; v1.8.1 ships signed checksums.txt)
+#      gitleaks works equivalently if you prefer it; set SCANNER below.
+#
+# Neither pass alone is sufficient. Pass 1 misses real secrets that do not
+# match a known prefix; pass 2 misses synthetic ones. Both run.
+#
+# Bypass, only after LOOKING at the finding:  git commit --no-verify
+
+set -uo pipefail
+
+RED=$'\033[31m'; GRN=$'\033[32m'; OFF=$'\033[0m'
+
+git diff --cached --quiet && exit 0
+
+# Added lines only, minus the +++ header lines.
+#
+# Lines carrying the allowlist marker are dropped before scanning. Security
+# documentation has to quote credential formats to be useful — this file and the
+# README both do — and without an escape hatch the hook blocks its own docs and
+# teaches you to reach for --no-verify, which is how these things stop working.
+# The marker is deliberately explicit and greppable: `git grep ALLOWLIST_MARKER`
+# lists every exemption in the repo for review.
+ALLOWLIST_MARKER='pragma: allowlist secret'
+ADDED="$(git diff --cached --unified=0 --diff-filter=ACM | grep '^+' | grep -v '^+++' | grep -Fv "$ALLOWLIST_MARKER")"
+[ -z "$ADDED" ] && exit 0
+
+# name|regex — high-confidence vendor formats plus obvious assignments.
+RULES=(
+  'AWS access key|AKIA[0-9A-Z]{16}'
+  'AWS temp key|ASIA[0-9A-Z]{16}'
+  'GitHub token|gh[pousr]_[A-Za-z0-9]{20,}'
+  'GitHub fine-grained PAT|github_pat_[A-Za-z0-9_]{20,}'
+  'Anthropic key|sk-ant-[A-Za-z0-9_-]{20,}'
+  'OpenAI-style key|sk-[A-Za-z0-9]{32,}'
+  'Slack token|xox[abprs]-[A-Za-z0-9-]{10,}'
+  'Google API key|AIza[0-9A-Za-z_-]{35}'
+  'GitLab PAT|glpat-[A-Za-z0-9_-]{20,}'
+  'Stripe key|[rs]k_live_[A-Za-z0-9]{20,}'
+  'Private key block|BEGIN [A-Z ]*PRIVATE KEY'
+  'Generic secret assignment|(api[_-]?key|apikey|secret|token|passwd|password|credential)[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9/_+.=-]{16,}'
+)
+
+found=0
+for rule in "${RULES[@]}"; do
+  name="${rule%%|*}"; re="${rule#*|}"
+  hits="$(printf '%s' "$ADDED" | grep -Eio "$re" | head -3)" || true
+  [ -z "$hits" ] && continue
+  if [ "$found" -eq 0 ]; then
+    echo "${RED}✖ pre-commit: possible credential in staged changes${OFF}" >&2
+    found=1
+  fi
+  while IFS= read -r m; do
+    [ -z "$m" ] && continue
+    # Never echo the whole value — first 8 chars is enough to locate it.
+    echo "    ${name}: ${m:0:8}…[REDACTED]" >&2
+  done <<< "$hits"
+done
+
+if [ "$found" -ne 0 ]; then
+  echo "  This repo is PUBLIC — review before committing." >&2
+  echo "  Secrets belong in ~/.zshrc.secrets (untracked, chezmoi-ignored)." >&2
+  echo "  Deliberate false positive?  git commit --no-verify" >&2
+  exit 1
+fi
+
+# ── Pass 2: maintained ruleset, if available ──────────────────────────────
+SCANNER="$(command -v betterleaks || command -v gitleaks || true)"
+if [ -n "$SCANNER" ]; then
+  # Feed the staged patch, not the worktree. --redact takes an OPTIONAL value,
+  # so it must be written --redact=100; `--redact -v` silently eats the next
+  # flag and the scan reports nothing.
+  scan_out="$(git diff --cached --unified=0 --diff-filter=ACM | "$SCANNER" stdin --redact=100 2>&1)"
+  if ! printf '%s' "$scan_out" | grep -qi 'no leaks found'; then
+    if printf '%s' "$scan_out" | grep -qiE 'leaks found: [0-9]+'; then
+      echo "${RED}✖ pre-commit: $(basename "$SCANNER") found a secret in the staged changes${OFF}" >&2
+      printf '%s\n' "$scan_out" | grep -iE 'leaks found|Finding|Secret|File|Line' | head -12 >&2
+      echo "  This repo is PUBLIC — review before committing." >&2
+      echo "  Deliberate false positive?  git commit --no-verify" >&2
+      exit 1
+    fi
+    # Neither verdict line present — the scanner errored. Fail loud rather than
+    # treating an unparseable result as clean.
+    echo "${RED}✖ pre-commit: $(basename "$SCANNER") did not return a verdict${OFF}" >&2
+    printf '%s\n' "$scan_out" | tail -5 >&2
+    exit 1
+  fi
+  echo "${GRN}✔ pre-commit: regex net + $(basename "$SCANNER") both clean${OFF}"
+  exit 0
+fi
+
+echo "${GRN}✔ pre-commit: regex net clean (no betterleaks/gitleaks installed)${OFF}"
+exit 0
