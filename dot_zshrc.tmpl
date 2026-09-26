@@ -237,7 +237,8 @@ yt() {
 }
 
 # ? to query duckduckgo inline - idea from Mischa van dem Berg
-?() { w3m "https://duckduckgo.com/?q=$*"; }
+ddg() { w3m "https://duckduckgo.com/?q=$*"; }
+alias '?'='noglob ddg'
 
 # ?? to send to claude inline
 ai() { claude -p  "$*"; }
@@ -293,3 +294,6 @@ alias lifeos='bun ${HOME}/.claude/LIFEOS/TOOLS/lifeos.ts -s ${HOME}/.claude/LIFE
 
 # LifeOS voice control (voice on|off|status|clear)
 source ~/.claude/LIFEOS/PULSE/state/voice-shell.zsh
+
+# opencode
+export PATH=/home/rrezinas/.opencode/bin:$PATH
