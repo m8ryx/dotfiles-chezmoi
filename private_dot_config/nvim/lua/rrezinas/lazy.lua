@@ -19,6 +19,10 @@ require("lazy").setup({ { import = "rrezinas.plugins" } } , {
 	change_detection = {
 		notify = false,
 	},
+	-- No plugin here needs luarocks; leaving this on makes lazy build hererocks for nothing
+	rocks = {
+		enabled = false,
+	},
 	performance = {
 		reset_packpath = false,
 	},
